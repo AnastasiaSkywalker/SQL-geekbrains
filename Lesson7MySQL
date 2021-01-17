@@ -1,0 +1,98 @@
+CREATE TABLE products (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  item TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL default '0000-00-00 00:00:00',  
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP 
+);
+
+
+CREATE TABLE users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  name TEXT NOT NULL,
+  birthday DATETIME  NOT NULL,
+  address TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL default '0000-00-00 00:00:00',  
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP 
+) COMMENT "Покупатели магазина";
+
+
+CREATE TABLE orders (
+  order_no INT NOT NULL AUTO_INCREMENT,
+  user_name INT UNSIGNED NOT NULL COMMENT 'привязать id users',
+  order_item INT UNSIGNED NOT NULL COMMENT 'id с products',
+  order_date DATETIME NOT NULL,
+  order_delivery DATETIME NOT NULL,
+  PRIMARY KEY (`order_no`),
+  FOREIGN KEY (`order_item`) REFERENCES products (`id`),
+  FOREIGN KEY (`user_name`) REFERENCES users (`id`)
+);
+
+#внесла в `products` принтер, видеокарту и камеру
+INSERT INTO `products`(`id`, `item`) VALUES (3, 'камера');
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (1, 'Антон Иванов', 'Москва');
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (2, 'Егор Летов', 'Кауга');# Затронута 1 строка.
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (3, 'Светлана Иванов', 'Москва');# Затронута 1 строка.
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (4, 'Алексей Петров', 'Москва');# Затронута 1 строка.
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (5, 'Анастасия Крыова', 'Омск');# Затронута 1 строка.
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (6, 'Саша Пушкин', 'Москва');# Затронута 1 строка.
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (7, 'Антон Михалков', 'Омск');# Затронута 1 строка.
+
+INSERT INTO `users`(`id`, `name`, `address`) VALUES (8, 'Ангелина Петрова', 'Пермь');# Затронута 1 строка.
+
+INSERT INTO `users`(`name`, `address`) VALUES ('Руслана Краснова', 'Крансодар');# Затронута 1 строка.
+
+INSERT INTO `users`(`name`, `address`) VALUES ('Мира Гусанова', 'Москва');# Затронута 1 строка.
+
+INSERT INTO `users`(`name`, `address`) VALUES ('Лия Ахеджакова', 'Москва');# Затронута 1 строка.
+
+INSERT INTO `users`(`name`, `address`) VALUES ('Святослав Мудрый', 'Киев');# Затронута 1 строка.
+
+
+
+
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (2, 3);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (12, 1);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (12, 2);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (3, 1);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (5, 1);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (5, 2);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (5, 3);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (7, 1);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (7, 3);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (9, 2);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (11, 2);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (1, 3);
+INSERT INTO `orders`(`user_name`, `order_item`) VALUES (3, 3);
+
+
+
+#Задание 1
+SELECT DISTINCT user_name FROM orders ORDER BY user_name;
+
+#Задание 2
+CREATE TABLE catalogs (
+  id INT UNSIGNED NOT NULL, 
+  item VARCHAR (20) NOT NULL PRIMARY KEY,
+  FOREIGN KEY (`id`) REFERENCES products (`id`)
+);
+
+#1принтер 2 видеокарта   3 камера
+
+INSERT INTO `catalogs`(`id`, `item`) VALUES (1, 'Epson L132');
+INSERT INTO `catalogs`(`id`, `item`) VALUES (1, 'HP Color LaserJet Pro M254nw');
+INSERT INTO `catalogs`(`id`, `item`) VALUES (1, 'Xerox Phaser 3020');
+INSERT INTO `catalogs`(`id`, `item`) VALUES (2, 'Titan X');
+INSERT INTO `catalogs`(`id`, `item`) VALUES (2, 'Radeon RX');
+INSERT INTO `catalogs`(`id`, `item`) VALUES (3, 'Nikon D850');
+INSERT INTO `catalogs`(`id`, `item`) VALUES (3, 'Fujifilm X100F');
+
+SELECT *
+FROM `catalogs`
+WHERE id = '1'
