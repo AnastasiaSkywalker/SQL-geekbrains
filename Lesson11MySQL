@@ -1,0 +1,77 @@
+#Практическое задание по теме “Оптимизация запросов”
+#Создайте таблицу logs типа Archive. Пусть при каждом создании записи в таблицах users, catalogs и #products в таблицу logs помещается время и дата создания записи, название таблицы, идентификатор #первичного ключа и содержимое поля name.
+CREATE TABLE logs (
+	created_at DATETIME NOT NULL,
+	table_name VARCHAR(45) NOT NULL,
+	str_id BIGINT(20) NOT NULL,
+	name_value VARCHAR(45) NOT NULL
+) ENGINE = ARCHIVE;
+
+DROP TRIGGER IF EXISTS watchlog_users;# MySQL вернула пустой результат (т.е. ноль строк).
+
+delimiter //
+CREATE TRIGGER watchlog_users AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+	INSERT INTO logs (created_at, table_name, str_id, name_value)
+	VALUES (NOW(), 'users', NEW.id, NEW.name);
+END //
+# MySQL вернула пустой результат (т.е. ноль строк).
+
+delimiter ;
+
+
+
+DROP TRIGGER IF EXISTS watchlog_catalogs;# MySQL вернула пустой результат (т.е. ноль строк).
+
+delimiter //
+CREATE TRIGGER watchlog_catalogs AFTER INSERT ON catalogs
+FOR EACH ROW
+BEGIN
+	INSERT INTO logs (created_at, table_name, str_id, name_value)
+	VALUES (NOW(), 'catalogs', NEW.id, NEW.item);
+END //
+# MySQL вернула пустой результат (т.е. ноль строк).
+
+delimiter ;
+
+DROP TRIGGER IF EXISTS watchlog_catalogs;# MySQL вернула пустой результат (т.е. ноль строк).
+
+
+delimiter //
+CREATE TRIGGER watchlog_products AFTER INSERT ON products
+FOR EACH ROW
+BEGIN
+	INSERT INTO logs (created_at, table_name, str_id, name_value)
+	VALUES (NOW(), 'catalogs', NEW.id, NEW.item);
+END //
+# MySQL вернула пустой результат (т.е. ноль строк).
+
+
+delimiter ;
+
+
+
+#Практическое задание по теме “NoSQL”
+#В базе данных Redis подберите коллекцию для подсчета посещений с определенных IP-адресов.
+HSET ipaddr 127.0.0.1 1
+
+#При помощи базы данных Redis решите задачу поиска имени пользователя по электронному адресу и #наоборот, поиск электронного адреса пользователя по его имени.
+SET Anastasia aa@yandex.ru
+SET aa@yandex.ru Anastasia
+GET Anastasia
+GET aa@yandex.ru
+
+
+#Организуйте хранение категорий и товарных позиций учебной базы данных shop в СУБД MongoDB.
+
+db.shop.insert({category: 'Процессоры'})
+db.shop.insert({category: 'Видеокарты'})
+db.shop.insert({category: 'Материнские_платы'})
+
+db.shop.update({category: 'Процессоры'}, {$set: { products:['Intel_Corei7_10700K', 'AMD_Ryzen 5_3600X ', 'AMDAthlon_200GE'] }})
+db.shop.update({category: 'Видеокарты'}, {$set: { products:['MSI_Radeon_R7360_OC', 'GIGABYTE_GeForce GTV_750_Ti'] }})
+db.shop.update({category: 'Материнские_платы'}, {$set: { products:['GIGABYTE_Z390_DESIGNARE', '
+MSI_B360_GAMING_PLUS'] }})
+
+
