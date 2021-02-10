@@ -1,0 +1,322 @@
+Курсовой проект  курса Базы данных Geebrains
+MovieLista
+
+Курсовая работа по базам данных (GeekUniversity, факультет Аналитики Big Data)
+Требования к курсовому проекту
+
+    Составить общее текстовое описание БД и решаемых ею задач;
+    минимальное количество таблиц - 10;
+    скрипты создания структуры БД (с первичными ключами, индексами, внешними ключами);
+    создать ERDiagram для БД;
+    скрипты характерных выборок (включающие группировки, JOIN'ы, вложенные таблицы);
+    представления (минимум 2);
+    хранимые процедуры / триггеры;
+
+
+##########
+Описание БД и решаемых ею задач: анализ пациентов, пролеченных в детском нейрохирургическом отделении областной больницы. Данное отделение - единственное профильное на всю область, поэтому все дети с нейрохирургической патологией и травмами головы проходят через него. Анализируеся качество лечения, зарегистрированные патологии - для составления плана закупок лекарств на год. На общем количестве госпитализированных рассчитывается потребность в персонале и аппаратуре.  Экономическая эффекивность связана с количеством больничных дней, выписанных родитеям, числом койко-дней и числа повторных госпитализаций при отдельном заболевании. Анализируются все пациенты, госпитализированные в отделение, наблюдающиеся затем амбулаторно. Анализируются использованные медикаменты, операционная активность, ээфективность лечения (выраженная в повторности госпитализаций), частота отправления в ПУ более высокого уровня. Дополнительные затраты, что важно не столько для больницы, сколько для проверяющих страховых компаний - длительность больничных дистов по уходу за детьми.
+filldb.info для генерации данных не использовала, внесла вручную выдуманные, чтобы сохранить логику лечения.
+Пацицент поступает в отделение с конкретной болезнью, регистрируется период болезни,  в отдельные таблицы внесены методы лечения и результаты, переводы в Федеральные центры, неодзодимость в диспансерном учете, поступление пациентов с хроническими заболеваниями, переехавших из других регионов, где они начинали леечние, конфликтные ситуации, необходимлсть оплаты больничного листа по уходу родственникам.
+
+
+##########
+CREATE DATABASE NEUROSURGERY;
+#1
+CREATE TABLE patients (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  name TEXT NOT NULL,
+  birthday DATE NOT NULL,
+  address TEXT NOT NULL,
+  phone INT NOT NULL,
+  mkb TEXT NOT NULL,
+  result TEXT NOT NULL,
+  admission_date DATE NOT NULL COMMENT 'год.месяц.день.',
+  discharge_date DATE NOT NULL
+);
+
+#2
+CREATE TABLE treatment (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  conservative BOOLEAN,
+  surgery BOOLEAN,
+  complications TEXT NOT NULL,
+  number_of_hospitalisation INT UNSIGNED NOT NULL COMMENT 'При конкретном заболевании'
+);
+#3
+CREATE TABLE conservative_therapy (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  nootropic BOOLEAN,
+  adrenal_hormones BOOLEAN,  
+  antihistamines BOOLEAN,
+  diuretic BOOLEAN,
+  antibiotic BOOLEAN,
+  oxygen BOOLEAN,
+  intensive_care BOOLEAN
+);
+#4
+CREATE TABLE surgery (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  surgery_name TEXT NOT NULL,
+  complications TEXT NOT NULL,
+  revision TEXT NOT NULL,
+  days_before_operation INT NOT NULL COMMENT 'От поступления',
+  days_before_discharge INT NOT NULL COMMENT 'От операции'
+);
+#5
+CREATE TABLE clinical_examination  (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  mkb TEXT NOT NULL,
+  disability BOOLEAN,
+  date_of_diagnosis DATE NOT NULL,
+  registration_in_the_clinic DATE NOT NULL,   
+  withdrawal_from_the_clinic DATE NOT NULL
+); 
+#6
+CREATE TABLE concomitant_diseases  (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  mkb TEXT NOT NULL,
+  treatment TEXT NOT NULL
+);
+#7
+CREATE TABLE patient_testimonials  (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  complaint TEXT NOT NULL,
+  thanks TEXT NOT NULL,
+  result TEXT NOT NULL
+);
+#8
+CREATE TABLE sick_leave  (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  mkb TEXT NOT NULL,
+  quantity_of_days INT UNSIGNED NOT NULL
+);
+#9
+CREATE TABLE moving_between_regions (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  mooving_in TEXT NOT NULL,
+  mooving_out TEXT NOT NULL,
+  data_transferring TEXT NOT NULL
+);
+#10
+CREATE TABLE federal_hospitals (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+  federal_hospital TEXT NOT NULL,
+  treatment TEXT NOT NULL,
+  result TEXT NOT NULL,
+  hospitalisation_date DATE NOT NULL
+);
+
+
+########## индексы будут по ID, самый попуярный запрос - это распространенность заболевания (по МКБ) в возрастным группам, количество операций и количество осложнений
+CREATE INDEX idx_patientID
+ON patients (id, mkb(4));
+
+CREATE INDEX idx_patientID
+ON surgery (id, surgery_name(255), revision(255));
+
+
+##########скрипты наполнения БД данными;
+INSERT INTO `patients`(`name`, `birthday`, `address`, `phone`, `mkb`, `result`, `admission_date`, `discharge_date`) VALUES 
+('Никита Козлов', '2015.01.18.', 'Калининград', '9823497898', 'S06.0', 'Улучшение', '2020.10.04.', '2020.10.06.'), 
+('Наташа Стрелецкая', '2017.01.22.', 'Калининград', '9823497898', 'S06.4', 'Смерть', '2020.07.04.', '2020.07.06.'), 
+('Денис Попов', '2018.04.02.', 'Светлогорск', '64559595955', 'S06.0', 'Улучшение', '2020.10.04.', '2020.10.06.'), 
+('Мария Гаудас', '2014.03.24.', 'Светлогорск', '5464789948', 'S06.3', 'Улучшение', '2020.06.04.', '2020.06.16.'), 
+('Петр Литвиненко', '2019.06.17.', 'Калининград', '366474894', 'R55', 'Улучшение', '2020.07.17.', '2020.07.21.'), 
+('Константин Баутин', '2016.07.02.', 'Калининград', '454685905', 'S00.0', 'Выздоровление', '2020.03.01.', '2020.03.05.'), 
+('Ирина Литвиненко', '2017.10.30.', 'Советск', '35437495', 'D33.0', 'Улучшение', '2020.05.12.', '2020.05.28.'), 
+('Ольга Болотина', '2017.03.26.', 'Калининград', '647489404', 'D33.0', 'Улучшение', '2020.10.01.', '2020.10.04.'), 
+('Алина Болотина', '2019.01.18.', 'Калининград', '3547489404', 'D33.1', 'Улучшение', '2020.02.12.', '2020.02.16.'), 
+('Станислав Говорухин', '2013.10.17.', 'Калининград', '3547484944', 'C17.0', 'Улучшение', '2020.03.12.', '2020.03.27.'), 
+('Эрен Егер', '2016.10.04.', 'Шинганшина', '546479894', 'P12.0', 'Улучшение', '2020.05.20.', '2020.05.24.'), 
+('Татьяна Савичева', '2016.10.02.', 'Гурьевск', '84746453', 'P12.0', 'Улучшение', '2020.01.22.', '2020.01.27.'), 
+('Станислав Лем', '2017.10.15.', 'Калининград', '6347438349', 'D34.0', 'Отправлен в федеральный центр', '2020.10.04.', '2020.10.06.'), 
+('Геннадий Петров', '2018.03.02.', 'Калининград', '8484746474', 'G91.0', 'Улучшение', '2020.10.06.', '2020.10.26.'), 
+('Лидия  Заремба', '2014.06.17.', 'Зеленоградск', '32223494', 'Q04.6', 'Улучшение', '2020.06.01.', '2020.06.30.'), 
+('Никита Иванов', '2015.07.12.', 'Калининград', '373287332', 'Q04.6', 'Улучшение', '2020.07.12.', '2020.07.29.'), 
+('Азамат Цораев', '2016.10.02.', 'Калининград', '2363276238', 'G91.1', 'Улучшение', '2020.10.04.', '2020.11.01.'), 
+('Анастасия Вертинская', '2015.10.02.', 'Калининград', '5326537631', 'G91.8', 'Улучшение', '2020.09.04.', '2020.10.06.'), 
+('Мила Васильева', '2015.08.02.', 'Калининград', '454457845', 'G91.0', 'Улучшение', '2020.08.04.', '2020.09.06.'), 
+('Айшвария Рай', '2015.10.02.', 'Калининград', '2349849874', 'G91.0', 'Улучшение', '2020.08.04.', '2020.09.06.');
+
+
+ALTER TABLE `surgery` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `treatment` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `conservative_therapy` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `surgery` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `clinical_examination` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `concomitant_diseases` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `patient_testimonials` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `sick_leave` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `moving_between_regions` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ALTER TABLE `federal_hospitals` ADD FOREIGN KEY (`id`) REFERENCES `patients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+INSERT INTO `clinical_examination`(`id`, `mkb`, `date_of_diagnosis`, `registration_in_the_clinic`) VALUES (5, 'R55', '2020.07.17.', '2020.08.31.');
+INSERT INTO `clinical_examination`(`id`, `mkb`, `date_of_diagnosis`, `registration_in_the_clinic`) VALUES (7, 'D33.0', '2020.05.12.', '2020.06.12.');
+INSERT INTO `clinical_examination`(`id`, `mkb`, `date_of_diagnosis`, `registration_in_the_clinic`) VALUES (8, 'D33.0', '2020.10.01.', '2020.11.01.');
+INSERT INTO `clinical_examination`(`id`, `mkb`, `date_of_diagnosis`, `registration_in_the_clinic`) VALUES (9, 'D33.1', '2020.02.12.', '2020.03.28.');
+INSERT INTO `clinical_examination`(`id`, `mkb`, `date_of_diagnosis`, `registration_in_the_clinic`) VALUES (14, 'G91.0', '2020.10.06.', '2020.11.08.');
+
+
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, '', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 3);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 1);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, TRUE, 'Нет', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, TRUE, 'Нет', 3);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Нет', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, TRUE, 'Нет', 4);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, TRUE, 'Нет', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, FALSE, 'Вентрикулит', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, TRUE, 'Нет', 2);
+INSERT INTO `treatment`(`conservative`, `surgery`, `complications`, `number_of_hospitalisation`) VALUES (TRUE, TRUE, 'Нет', 2);
+
+
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (2, TRUE, FALSE, 'Амбауторная карта выдана на руки');
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (4, TRUE, FALSE, 'Амбауторная карта выдана на руки');
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (7, TRUE, FALSE, 'Амбауторная карта выдана на руки');
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (8, TRUE, FALSE, 'Амбауторная карта выдана на руки');
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (11, FALSE, TRUE, 'Амбауторная карта выдана на руки');
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (12, TRUE, FALSE, 'Амбауторная карта выдана на руки');
+INSERT INTO `moving_between_regions`(`id`, `mooving_in`, `mooving_out`, `data_transferring`) VALUES (16, TRUE, FALSE, 'Амбауторная карта выдана на руки');
+
+
+INSERT INTO `federal_hospitals`(`id`, `federal_hospital`, `treatment`, `result`, `hospitalisation_date`) VALUES (7, 'НИИ Бурденко', 'Операция', 'Улучшение', '2019.05.06.');
+INSERT INTO `federal_hospitals`(`id`, `federal_hospital`, `treatment`, `result`, `hospitalisation_date`) VALUES (8, 'НМИЦ Алмазово', 'Операция', 'Улучшение', '2020.01.25.');
+INSERT INTO `federal_hospitals`(`id`, `federal_hospital`, `treatment`, `result`, `hospitalisation_date`) VALUES (9, 'НМИЦ Алмазово', 'Операция', 'Улучшение', '2018.09.23.');
+INSERT INTO `federal_hospitals`(`id`, `federal_hospital`, `treatment`, `result`, `hospitalisation_date`) VALUES (10, 'НИИ Бурденк', 'Операция', 'Улучшение', '2019.07.08.');
+INSERT INTO `federal_hospitals`(`id`, `federal_hospital`, `treatment`, `result`, `hospitalisation_date`) VALUES (19, 'НИИ Бурденк', 'Программируемый капан', 'Улучшение', '2020.12.01.');
+
+
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, FALSE, FALSE TRUE,);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE);
+INSERT INTO `conservative_therapy`(`nootropic`, `adrenal_hormones`, `antihistamines`, `diuretic`, `antibiotic`, `oxygen`, `intensive_care`) VALUES (TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE);
+
+
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (1, 'S06.0', 21);
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (2, 'S06.4', 24);
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (10, 'C17.0', 30);
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (14, 'G91.0', 15);
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (16, 'Q04.6', 6);
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (17, 'G91.1', 10);
+INSERT INTO `sick_leave`(`id`, `mkb`, `quantity_of_days`) VALUES (19, 'G91.0', 11);
+
+
+INSERT INTO `patient_testimonials`(`id`, `complaint`, `thanks`, `result`) VALUES (2, 'Запрос в следственный комитет', '', 'Раследование');
+INSERT INTO `patient_testimonials`(`id`, `complaint`, `thanks`, `result`) VALUES (13, '', 'Благодарность отделению', 'Премирование сотрудников');
+INSERT INTO `patient_testimonials`(`id`, `complaint`, `thanks`, `result`) VALUES (15, '', 'Благодарность отделению', 'Премирование сотрудников');
+
+
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (3, 'E10', 'Глибенкламид');
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (5,'H12.1', 'ФТЛ');
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (7, 'E10', 'Глибенкламид');
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (8, 'E10', 'Глибенкламид');
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (13, 'J45', 'Физиотерапия');
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (17, 'A20.3', 'Глюкокортикоиды');
+INSERT INTO `concomitant_diseases`(`id`, `mkb`, `treatment`) VALUES (20, 'M12.5', 'ЛФК, ФТЛ');
+
+
+INSERT INTO `surgery`(`id`, `surgery_name`, `complications`, `revision`, `days_before_operation`, `days_before_discharge`) VALUES (13, 'ВПШ', 'Нет', '', 1, 10);
+INSERT INTO `surgery`(`id`, `surgery_name`, `complications`, `revision`, `days_before_operation`, `days_before_discharge`) VALUES (14, 'ВПШ', 'Нет', '', 1, 10);
+INSERT INTO `surgery`(`id`, `surgery_name`, `complications`, `revision`, `days_before_operation`, `days_before_discharge`) VALUES (16, 'Люмбаьный шунт', 'Нет', '', 1, 12);
+INSERT INTO `surgery`(`id`, `surgery_name`, `complications`, `revision`, `days_before_operation`, `days_before_discharge`) VALUES (17, 'ВПШ', 'Нет', '', 1, 10);
+INSERT INTO `surgery`(`id`, `surgery_name`, `complications`, `revision`, `days_before_operation`, `days_before_discharge`) VALUES (19, 'Программируемый клапан', 'Нет', '', 3, 23);
+INSERT INTO `surgery`(`id`, `surgery_name`, `complications`, `revision`, `days_before_operation`, `days_before_discharge`) VALUES (20, 'ВПШ', 'Нет', '', 1, 10);
+
+
+##########Скрипты характерных выборок (группировки, JOIN'ы, вложенные таблицы);
+SELECT id, name FROM patients WHERE mkb='Q04.6' GROUP BY admission_date;
+
+
+SELECT result, COUNT( name ) AS count
+FROM patients
+GROUP BY result
+
+
+##########Для джойна предпочтителен LEFT, поскольку не у всех пациентов есть строки в других таблицах (INNER выводит 0 строк)
+SELECT p.id, p.name, p.mkb, sr.surgery_name, ct.intensive_care
+FROM patients p
+LEFT JOIN surgery sr ON p.id = sr.id
+LEFT JOIN conservative_therapy ct ON p.id = ct.id;
+
+
+##########Вложенные таблицы
+SELECT *
+FROM patients
+WHERE birthday = (
+SELECT MAX( birthday )
+FROM patients ) 
+
+##########Представления;
+CREATE VIEW oxygen_needs 
+AS SELECT * 
+FROM conservative_therapy 
+WHERE oxygen=1; 
+
+SELECT *
+FROM oxygen_needs
+
+
+
+CREATE VIEW surgery_complications 
+AS SELECT * 
+FROM treatment
+WHERE complications NOT IN ('Нет'); 
+
+SELECT * 
+FROM surgery_complications; 
+
+
+
+
+##########Хранимые процедуры / Триггеры;
+CREATE TABLE 'neurosurgery'.'backup' (
+`id` INT( 11 ) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+`row_id` INT( 11 ) UNSIGNED NOT NULL,
+`content` TEXT NOT NULL
+) ENGINE = InnoDB
+DELIMITER |
+CREATE TRIGGER changes AFTER UPDATE
+ON patients FOR EACH ROW BEGIN
+INSERT INTO backup Set row_id = patients.id, content = patients.content;
+END;
+
+
+##########phpMyAdmin не поддерживает выполнение хранимых процедур(
+
+DROP PROCEDURE IF EXISTS patient_age;
+
+DELIMITER//
+
+CREATE PROCEDURE patient_age()
+BEGIN
+  SELECT id, name, DATE_FORMAT(FROM_DAYS(TO_DAYS(admission_date) - TO_DAYS(birthday)), '%Y') +0 AS 'age'
+  FROM patients;
+  
+END//
+DELIMITER;
